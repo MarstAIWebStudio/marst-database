@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marst DataBase</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #eee; }
+        nav {
+            background: #1a1a2e;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        nav h1 { color: #00ff88; font-size: 1.2rem; }
+        nav span { color: #888; font-size: 0.9rem; }
+        nav button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .header h2 { color: #eee; font-size: 1.3rem; }
+        .new-btn {
+            background: #00ff88;
+            color: #111;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+        .project-card {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .project-card:hover { border-color: #00ff88; }
+        .project-card h3 { color: #eee; margin-bottom: 0.5rem; }
+        .project-card .api-key {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #555;
+            margin-bottom: 0.8rem;
+            word-break: break-all;
+        }
+        .project-card .tier {
+            display: inline-block;
+            background: #00ff8822;
+            color: #00ff88;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        .project-card .date { color: #555; font-size: 0.8rem; margin-top: 0.5rem; }
+        .empty { text-align: center; color: #555; padding: 4rem; }
+
+        /* 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 380px;
+        }
+        .modal h3 { color: #00ff88; margin-bottom: 1rem; }
+        .modal input {
+            width: 100%;
+            background: #111;
+            border: 1px solid #333;
+            color: #eee;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+        .modal-btns { display: flex; gap: 0.5rem; justify-content: flex-end; }
+        .btn-cancel { background: #333; color: #eee; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+        .btn-save { background: #00ff88; color: #111; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+<nav>
+    <h1>⚡ Marst DataBase</h1>
+    <span id="nav-user"></span>
+    <button onclick="logout()">로그아웃</button>
+</nav>
+
+<div class="container">
+    <div class="header">
+        <h2>내 프로젝트</h2>
+        <button class="new-btn" onclick="showNewProject()">+ 새 프로젝트</button>
+    </div>
+    <div class="projects" id="projects">
+        <div class="empty">로딩 중...</div>
+    </div>
+</div>
+
+<!-- 새 프로젝트 모달 -->
+<div class="modal-overlay" id="new-project-modal">
+    <div class="modal">
+        <h3>새 프로젝트</h3>
+        <input type="text" id="project-name" placeholder="프로젝트 이름" />
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="hideModal()">취소</button>
+            <button class="btn-save" onclick="createProject()">생성</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'https://marst-database.onrender.com';
+
+    if (!localStorage.getItem('marst_token')) window.location.href = 'login.html';
+    const user = JSON.parse(localStorage.getItem('marst_user') || '{}');
+    document.getElementById('nav-user').textContent = `👤 ${user.username}`;
+
+    window.onload = loadProjects;
+
+    async function loadProjects() {
+        const res = await fetch(`${API}/api/projects`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('marst_token')}` }
+        });
+        const projects = await res.json();
+        const container = document.getElementById('projects');
+
+        if (projects.length === 0) {
+            container.innerHTML = '<div class="empty">프로젝트가 없어요!<br>새 프로젝트를 만들어보세요 🚀</div>';
+            return;
+        }
+
+        container.innerHTML = projects.map(p => `
+            <div class="project-card" onclick="openProject('${p.id}', '${p.api_key}')">
+                <h3>📁 ${p.name}</h3>
+                <div class="api-key">${p.api_key}</div>
+                <span class="tier">${p.tier}</span>
+                <div class="date">${new Date(p.created_at).toLocaleDateString('ko-KR')}</div>
+            </div>
+        `).join('');
+    }
+
+    function openProject(id, apiKey) {
+        localStorage.setItem('current_project_id', id);
+        localStorage.setItem('current_api_key', apiKey);
+        window.location.href = 'console.html';
+    }
+
+    function showNewProject() {
+        document.getElementById('new-project-modal').classList.add('show');
+    }
+
+    function hideModal() {
+        document.getElementById('new-project-modal').classList.remove('show');
+    }
+
+    async function createProject() {
+        const name = document.getElementById('project-name').value.trim();
+        if (!name) return;
+        const res = await fetch(`${API}/api/projects`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('marst_token')}`
+            },
+            body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            hideModal();
+            loadProjects();
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('marst_token');
+        localStorage.removeItem('marst_user');
+        window.location.href = 'login.html';
+    }
+</script>
+</body>
+</html>

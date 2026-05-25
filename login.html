@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marst DataBase</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f1a;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 2.5rem;
+            width: 380px;
+        }
+        h1 { color: #00ff88; font-size: 1.8rem; text-align: center; margin-bottom: 0.5rem; }
+        p { color: #666; text-align: center; margin-bottom: 2rem; font-size: 0.9rem; }
+        input {
+            width: 100%;
+            background: #111;
+            border: 1px solid #333;
+            color: #eee;
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+        input:focus { outline: none; border-color: #00ff88; }
+        button {
+            width: 100%;
+            background: #00ff88;
+            color: #111;
+            border: none;
+            padding: 0.9rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 0.8rem;
+        }
+        button:hover { background: #00cc6a; }
+        .switch { text-align: center; color: #666; font-size: 0.85rem; }
+        .switch a { color: #00ff88; cursor: pointer; text-decoration: none; }
+        .msg { text-align: center; font-size: 0.85rem; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>⚡ Marst DB</h1>
+    <p>데이터베이스 서비스</p>
+
+    <div id="login-form">
+        <input type="text" id="username" placeholder="아이디" />
+        <input type="password" id="password" placeholder="비밀번호" />
+        <button onclick="login()">로그인</button>
+        <div class="switch">계정이 없으신가요? <a onclick="showRegister()">회원가입</a></div>
+    </div>
+
+    <div id="register-form" style="display:none">
+        <input type="text" id="reg-username" placeholder="아이디" />
+        <input type="password" id="reg-password" placeholder="비밀번호" />
+        <input type="email" id="reg-email" placeholder="이메일 (선택)" />
+        <button onclick="register()">회원가입</button>
+        <div class="switch">이미 계정이 있으신가요? <a onclick="showLogin()">로그인</a></div>
+    </div>
+
+    <p class="msg" id="msg"></p>
+</div>
+
+<script>
+    const API = 'https://marst-database.onrender.com';
+
+    if (localStorage.getItem('marst_token')) {
+        window.location.href = 'index.html';
+    }
+
+    function showRegister() {
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('register-form').style.display = 'block';
+    }
+
+    function showLogin() {
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('login-form').style.display = 'block';
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const res = await fetch(`${API}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.token) {
+            localStorage.setItem('marst_token', data.token);
+            localStorage.setItem('marst_user', JSON.stringify({ username: data.username, role: data.role }));
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('msg').style.color = 'red';
+            document.getElementById('msg').textContent = data.error;
+        }
+    }
+
+    async function register() {
+        const username = document.getElementById('reg-username').value;
+        const password = document.getElementById('reg-password').value;
+        const email = document.getElementById('reg-email').value;
+        const res = await fetch(`${API}/api/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('msg').style.color = '#00ff88';
+            document.getElementById('msg').textContent = '회원가입 완료! 로그인해주세요.';
+            showLogin();
+        } else {
+            document.getElementById('msg').style.color = 'red';
+            document.getElementById('msg').textContent = data.error;
+        }
+    }
+</script>
+</body>
+</html>
