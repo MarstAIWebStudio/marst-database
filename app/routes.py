@@ -186,3 +186,55 @@ def db_delete(collection_name, doc_id):
     db.session.delete(doc)
     db.session.commit()
     return jsonify({'message': '삭제 완료'})
+# ── 프로젝트 멤버 목록 조회 ──
+@main.route('/api/projects/<int:project_id>/members', methods=['GET'])
+@jwt_required()
+def get_members(project_id):
+    me_id = int(get_jwt_identity())
+    my_member = ProjectMember.query.filter_by(project_id=project_id, user_id=me_id).first()
+    if not my_member:
+        return jsonify({'error': '권한 없음'}), 403
+
+    members = ProjectMember.query.filter_by(project_id=project_id).all()
+    result = []
+    for m in members:
+        user = User.query.get(m.user_id)
+        result.append({
+            'user_id': m.user_id,
+            'username': user.username,
+            'tier': m.tier,
+            'can_read': m.can_read,
+            'can_write': m.can_write,
+            'can_setting': m.can_setting
+        })
+    return jsonify(result)
+
+# ── 멤버 초대 (username으로) ──
+@main.route('/api/projects/<int:project_id>/invite', methods=['POST'])
+@jwt_required()
+def invite_member(project_id):
+    me_id = int(get_jwt_identity())
+    my_member = ProjectMember.query.filter_by(project_id=project_id, user_id=me_id).first()
+    if not my_member or my_member.tier not in ['owner', 'admin']:
+        return jsonify({'error': '권한 없음'}), 403
+
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+    if not user:
+        return jsonify({'error': '사용자 없음'}), 404
+
+    existing = ProjectMember.query.filter_by(project_id=project_id, user_id=user.id).first()
+    if existing:
+        return jsonify({'error': '이미 멤버입니다'}), 400
+
+    member = ProjectMember(
+        project_id=project_id,
+        user_id=user.id,
+        tier='guest',
+        can_read=False,
+        can_write=False,
+        can_setting=False
+    )
+    db.session.add(member)
+    db.session.commit()
+    return jsonify({'message': f'{user.username} 초대 완료!'})

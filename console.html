@@ -212,6 +212,28 @@
             </div>
         </div>
     </div>
+
+    <!-- 멤버 페이지 -->
+<div class="page" id="page-members">
+    <div class="apikey-view">
+        <h2>👥 멤버 관리</h2>
+        
+        <!-- 멤버 초대 -->
+        <div class="key-box">
+            <label>멤버 초대</label>
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+                <input type="text" id="invite-username" placeholder="아이디 입력" style="background:#111; border:1px solid #333; color:#eee; padding:0.6rem; border-radius:6px; flex:1; font-size:0.9rem;" />
+                <button onclick="inviteMember()" style="background:#00ff88; color:#111; border:none; padding:0.6rem 1rem; border-radius:6px; font-weight:bold;">초대</button>
+            </div>
+            <p id="invite-msg" style="font-size:0.8rem; margin-top:0.5rem;"></p>
+        </div>
+
+        <!-- 멤버 목록 -->
+        <div class="key-box">
+            <label>멤버 목록</label>
+            <div id="member-list" style="margin-top:0.8rem;"></div>
+        </div>
+    </div>
 </div>
 
 <!-- 컬렉션 추가 모달 -->
@@ -273,12 +295,13 @@ await app.db.delete('posts', 'DOC_ID');`;
         loadCollections();
     };
 
-    function showPage(name) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.sidemenu-item').forEach(i => i.classList.remove('active'));
-        document.getElementById(`page-${name}`).classList.add('active');
-        event.target.classList.add('active');
-    }
+function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidemenu-item').forEach(i => i.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    event.target.classList.add('active');
+    if (name === 'members') loadMembers();
+}
 
     async function loadCollections() {
         const res = await fetch(`${API}/api/db`, {
@@ -368,6 +391,82 @@ await app.db.delete('posts', 'DOC_ID');`;
         localStorage.removeItem('marst_user');
         window.location.href = 'login.html';
     }
+
+    async function loadMembers() {
+    const res = await fetch(`${API}/api/projects/${projectId}/members`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('marst_token')}` }
+    });
+    const members = await res.json();
+    const list = document.getElementById('member-list');
+
+    list.innerHTML = members.map(m => `
+        <div style="background:#111; border-radius:8px; padding:1rem; margin-bottom:0.7rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="color:#eee; margin-bottom:0.4rem;">👤 ${m.username} <span style="background:#00ff8822; color:#00ff88; padding:0.2rem 0.5rem; border-radius:20px; font-size:0.75rem; margin-left:0.5rem;">${m.tier}</span></div>
+                <div style="font-size:0.8rem; color:#666;">
+                    read: <span style="color:${m.can_read ? '#00ff88' : '#ff4444'}">${m.can_read}</span> &nbsp;
+                    write: <span style="color:${m.can_write ? '#00ff88' : '#ff4444'}">${m.can_write}</span> &nbsp;
+                    setting: <span style="color:${m.can_setting ? '#00ff88' : '#ff4444'}">${m.can_setting}</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <select onchange="changeTier(${m.user_id}, this.value)" style="background:#222; color:#eee; border:1px solid #444; padding:0.3rem; border-radius:6px; font-size:0.8rem;">
+                    <option ${m.tier=='guest'?'selected':''}>guest</option>
+                    <option ${m.tier=='member'?'selected':''}>member</option>
+                    <option ${m.tier=='admin'?'selected':''}>admin</option>
+                    <option ${m.tier=='owner'?'selected':''}>owner</option>
+                </select>
+                <button onclick="togglePerm(${m.user_id}, 'read', ${m.can_read})" style="background:${m.can_read?'#00ff8833':'#ff444433'}; color:${m.can_read?'#00ff88':'#ff4444'}; border:1px solid; padding:0.3rem 0.5rem; border-radius:6px; font-size:0.75rem;">R</button>
+                <button onclick="togglePerm(${m.user_id}, 'write', ${m.can_write})" style="background:${m.can_write?'#00ff8833':'#ff444433'}; color:${m.can_write?'#00ff88':'#ff4444'}; border:1px solid; padding:0.3rem 0.5rem; border-radius:6px; font-size:0.75rem;">W</button>
+                <button onclick="togglePerm(${m.user_id}, 'setting', ${m.can_setting})" style="background:${m.can_setting?'#00ff8833':'#ff444433'}; color:${m.can_setting?'#00ff88':'#ff4444'}; border:1px solid; padding:0.3rem 0.5rem; border-radius:6px; font-size:0.75rem;">S</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function inviteMember() {
+    const username = document.getElementById('invite-username').value.trim();
+    if (!username) return;
+    const res = await fetch(`${API}/api/projects/${projectId}/invite`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('marst_token')}`
+        },
+        body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+    const msg = document.getElementById('invite-msg');
+    msg.style.color = res.ok ? '#00ff88' : '#ff4444';
+    msg.textContent = data.message || data.error;
+    if (res.ok) loadMembers();
+}
+
+async function changeTier(userId, tier) {
+    await fetch(`${API}/api/projects/${projectId}/members/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('marst_token')}`
+        },
+        body: JSON.stringify({ tier })
+    });
+    loadMembers();
+}
+
+async function togglePerm(userId, perm, current) {
+    const body = {};
+    body[`can_${perm}`] = !current;
+    await fetch(`${API}/api/projects/${projectId}/members/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('marst_token')}`
+        },
+        body: JSON.stringify(body)
+    });
+    loadMembers();
+}
 </script>
 </body>
 </html>
