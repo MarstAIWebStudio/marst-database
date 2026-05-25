@@ -144,26 +144,27 @@
     window.onload = loadProjects;
 
     async function loadProjects() {
-        const res = await fetch(`${API}/api/projects`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('marst_token')}` }
-        });
-        const projects = await res.json();
-        const container = document.getElementById('projects');
+    const res = await fetch(`${API}/api/projects`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('marst_token')}` }
+    });
+    const data = await res.json();
+    const projects = Array.isArray(data) ? data : [];
+    const container = document.getElementById('projects');
 
-        if (projects.length === 0) {
-            container.innerHTML = '<div class="empty">프로젝트가 없어요!<br>새 프로젝트를 만들어보세요 🚀</div>';
-            return;
-        }
-
-        container.innerHTML = projects.map(p => `
-            <div class="project-card" onclick="openProject('${p.id}', '${p.api_key}')">
-                <h3>📁 ${p.name}</h3>
-                <div class="api-key">${p.api_key}</div>
-                <span class="tier">${p.tier}</span>
-                <div class="date">${new Date(p.created_at).toLocaleDateString('ko-KR')}</div>
-            </div>
-        `).join('');
+    if (projects.length === 0) {
+        container.innerHTML = '<div class="empty">프로젝트가 없어요!<br>새 프로젝트를 만들어보세요 🚀</div>';
+        return;
     }
+
+    container.innerHTML = projects.map(p => `
+        <div class="project-card" onclick="openProject('${p.id}', '${p.api_key}')">
+            <h3>📁 ${p.name}</h3>
+            <div class="api-key">${p.api_key}</div>
+            <span class="tier">${p.tier}</span>
+            <div class="date">${new Date(p.created_at).toLocaleDateString('ko-KR')}</div>
+        </div>
+    `).join('');
+}
 
     function openProject(id, apiKey) {
         localStorage.setItem('current_project_id', id);
