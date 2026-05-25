@@ -94,23 +94,24 @@
     }
 
     async function login() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const res = await fetch(`${API}/api/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        if (data.token) {
-            localStorage.setItem('marst_token', data.token);
-            localStorage.setItem('marst_user', JSON.stringify({ username: data.username, role: data.role }));
-            window.location.href = 'index.html';
-        } else {
-            document.getElementById('msg').style.color = 'red';
-            document.getElementById('msg').textContent = data.error;
-        }
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const res = await fetch(`${API}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.token) {
+        localStorage.setItem('marst_token', data.token);
+        localStorage.setItem('marst_refresh_token', data.refresh_token);
+        localStorage.setItem('marst_user', JSON.stringify({ username: data.username, role: data.role }));
+        window.location.href = 'index.html';
+    } else {
+        document.getElementById('msg').style.color = 'red';
+        document.getElementById('msg').textContent = data.error;
     }
+}
 
     async function register() {
         const username = document.getElementById('reg-username').value;

@@ -33,7 +33,13 @@ def login():
     if not user or not check_password_hash(user.password_hash, data['password']):
         return jsonify({'error': '이름 또는 비밀번호가 틀렸습니다'}), 401
     token = create_access_token(identity=str(user.id))
-    return jsonify({'token': token, 'username': user.username, 'role': user.role})
+    refresh_token = create_refresh_token(identity=str(user.id))
+    return jsonify({
+        'token': token,
+        'refresh_token': refresh_token,
+        'username': user.username,
+        'role': user.role
+    })
 
 # ── 내 정보 ──
 @main.route('/api/me', methods=['GET'])
@@ -238,3 +244,13 @@ def invite_member(project_id):
     db.session.add(member)
     db.session.commit()
     return jsonify({'message': f'{user.username} 초대 완료!'})
+
+    from flask_jwt_extended import create_refresh_token, jwt_required, get_jwt_identity
+
+# ── 토큰 재발급 ──
+@main.route('/api/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    user_id = get_jwt_identity()
+    new_token = create_access_token(identity=user_id)
+    return jsonify({'token': new_token})

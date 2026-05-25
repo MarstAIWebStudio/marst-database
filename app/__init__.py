@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
 
 load_dotenv()
@@ -16,6 +17,8 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///marst.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'marst-secret-key')
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 
     db.init_app(app)
     jwt.init_app(app)
@@ -28,7 +31,6 @@ def create_app():
         from app import models
         db.create_all()
 
-        # 초기 admin 계정 자동 생성
         from app.models import User
         from werkzeug.security import generate_password_hash
         admin = User.query.filter_by(username='admin').first()

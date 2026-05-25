@@ -203,6 +203,39 @@
         localStorage.removeItem('marst_user');
         window.location.href = 'login.html';
     }
+
+    async function refreshToken() {
+    const refreshToken = localStorage.getItem('marst_refresh_token');
+    if (!refreshToken) return false;
+    const res = await fetch(`${API}/api/refresh`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${refreshToken}` }
+    });
+    if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('marst_token', data.token);
+        return true;
+    }
+    return false;
+}
+
+// API 호출 시 401 나면 자동 재발급
+async function authFetch(url, options = {}) {
+    if (!options.headers) options.headers = {};
+    options.headers['Authorization'] = `Bearer ${localStorage.getItem('marst_token')}`;
+    
+    let res = await fetch(url, options);
+    if (res.status === 401) {
+        const ok = await refreshToken();
+        if (ok) {
+            options.headers['Authorization'] = `Bearer ${localStorage.getItem('marst_token')}`;
+            res = await fetch(url, options);
+        } else {
+            window.location.href = 'login.html';
+        }
+    }
+    return res;
+}
 </script>
 </body>
 </html>
